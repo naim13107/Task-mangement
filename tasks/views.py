@@ -1,8 +1,9 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from tasks.forms import TaskForm,TaskModelForm
-from tasks.models import Employee,Task
-
+from tasks.models import Employee,Task,TaskDetail
+from datetime import date
+from django.db.models import Q 
 
 # Create your views here.
 # def home(request) :
@@ -57,12 +58,23 @@ def create_task(request):
     return render(request,"task_form.html",context)
 
 def view_task(request):
-    #retrive all data from tasks model
-    tasks = Task.objects.all()
+    #Show the task that are completed
+    # tasks = Task.objects.filter(status = "COMPLETED")
 
-    #retrive a specific task 
-    task_3 = Task.objects.get(pk=3)
+    #Show the task whose due date is today
+    # tasks = Task.objects.filter(due_date = date.today())
 
-    #Fetch the first task 
-    first_task = Task.objects.first
-    return render(request,"show_task.html",{"tasks" : tasks ,"task3" : task_3 , "first_task":first_task})
+    """"Show the task whose priority is not low """
+
+    # tasks = TaskDetail.objects.exclude(priority = "H")
+
+    '''Show the task that contain letter 'c' and status pending'''
+    #tasks = Task.objects.filter(title__icontains  = 'c' , status = 'PENDING')
+    
+    '''Show the tasks those are in-progress or status pending'''
+    tasks = Task.objects.filter(Q(status = 'PENDING')| Q(status = 'IN_PROGRESS'))
+  
+    '''to check if any entry exists or not'''
+    # tasks = Task.objects.filter(status='kjjsdasdwqwdqwd').exists() 
+
+    return render(request,"show_task.html",{"tasks" : tasks })
