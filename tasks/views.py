@@ -1,9 +1,9 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from tasks.forms import TaskForm,TaskModelForm
-from tasks.models import Employee,Task,TaskDetail
+from tasks.models import Employee,Task,TaskDetail,Project
 from datetime import date
-from django.db.models import Q 
+from django.db.models import Q , Count , Max , Min , Avg
 
 # Create your views here.
 # def home(request) :
@@ -72,9 +72,27 @@ def view_task(request):
     #tasks = Task.objects.filter(title__icontains  = 'c' , status = 'PENDING')
     
     '''Show the tasks those are in-progress or status pending'''
-    tasks = Task.objects.filter(Q(status = 'PENDING')| Q(status = 'IN_PROGRESS'))
+    #tasks = Task.objects.filter(Q(status = 'PENDING')| Q(status = 'IN_PROGRESS'))
   
     '''to check if any entry exists or not'''
     # tasks = Task.objects.filter(status='kjjsdasdwqwdqwd').exists() 
 
-    return render(request,"show_task.html",{"tasks" : tasks })
+    #select_related(ForeignKey,OneToOneField)
+    # tasks = Task.objects.select_related('details').all
+    # tasks = TaskDetail.objects.select_related('task').all
+    # tasks = Task.objects.select_related('project').all()
+
+    ''''prefetch_related (reverse Foreignkey , many to many) '''
+    #tasks = Project.objects.prefetch_related('task_set').all()
+
+    # tasks = Task.objects.prefetch_related('assigned_to').all()
+
+    # task_count = Task.objects.aggregate(num_task  = Count('id'))
+
+    projects = Project.objects.annotate(num_task = Count('task')).order_by('num_task')
+    
+    return render(request,"show_task.html",{"projects" : projects })
+
+
+
+#Aggrigate SQL - min max .....
