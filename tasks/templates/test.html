@@ -1,4 +1,3 @@
-
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
@@ -9,19 +8,17 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-        
-        
-        {% for  name  in names %}
-            {% if not name == "Jhon" %}
-                <p>{{name}}</p>
-            {% endif %}  
-            {{ count|add:"1" }} 
+    
+        {% for name in names %}
+            {% if not name == 'John' %}
+                <p>{{ name }}</p>
+            {% endif %}
         {% endfor %}
-         
         
-            
-
-
-        <p class="lal-bg">{{ age }}</p>
+    {% with a=10 %} 
+        <div> value of a: {{a}}</div>
+    {% endwith %}
+    {{count}}
+    
 </body>
 </html>

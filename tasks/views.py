@@ -1,80 +1,140 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse
-from tasks.forms import TaskForm,TaskModelForm
-from tasks.models import Employee,Task,TaskDetail
+from tasks.forms import TaskForm, TaskModelForm, TaskDetailModelForm
+from tasks.models import Employee, Task, TaskDetail, Project
 from datetime import date
-from django.db.models import Q 
+from django.db.models import Q, Count, Max, Min, Avg
+from django.contrib import messages
+
 
 # Create your views here.
-# def home(request) :
-#       # work with data-base 
-#       # transform data
-#       # data pass 
-#       # HTTP response / Json response 
-#     return HttpResponse("Welcome tho the task management system")
 
-# def contact(request):
-#     return HttpResponse("<h1 style = 'color : red '>This is contact page</h1>")
-
-# def show_task(request) :
-#     return HttpResponse("<h1>This is our task page</h1>")
-# def show_specific_task(request,id):
-#     print("id : ",id)
-#     print("id type : ", type(id) )
-#     return HttpResponse(f"<h1> This is specific task page {id} </h1>")
-
-# def dashboard(request,id):
-#     return HttpResponse ("This is Dashboard")
-
-
-# def show_admin(request):
-#     return HttpResponse("This is admin")
 
 def manager_dashboard(request):
-    return render(request,"dashboard/manager_dashboard.html")
-def user_dashboard(request):
-    return render(request,"dashboard/user_dashboard.html")
-def test(request):
+
+    # getting task count
+    # total_task = tasks.count()
+    # completed_task = Task.objects.filter(status="COMPLETED").count()
+    # in_progress_task = Task.objects.filter(status='IN_PROGRESS').count()
+    # pending_task = Task.objects.filter(status="PENDING").count()
+
+    # count = {
+    #     "total_task":
+    #     "completed_task":
+    #     "in_progress_task":
+    #     "pending_task":
+    # }
+    type = request.GET.get('type', 'all')
+    # print(type)
+
+    counts = Task.objects.aggregate(
+        total=Count('id'),
+        completed=Count('id', filter=Q(status='COMPLETED')),
+        in_progress=Count('id', filter=Q(status='IN_PROGRESS')),
+        pending=Count('id', filter=Q(status='PENDING')),
+    )
+
+    # Retriving task data
+
+    base_query = Task.objects.select_related(
+        'details').prefetch_related('assigned_to')
+
+    if type == 'completed':
+        tasks = base_query.filter(status='COMPLETED')
+    elif type == 'in-progress':
+        tasks = base_query.filter(status='IN_PROGRESS')
+    elif type == 'pending':
+        tasks = base_query.filter(status='PENDING')
+    elif type == 'all':
+        tasks = base_query.all()
+
     context = {
-        "names" : ["Mahmud","Ahmed","Jhon","Mr.X"],
-         "age" : 23,
-            
+        "tasks": tasks,
+        "counts": counts
     }
-    return render(request,"test.html",context)
+    return render(request, "dashboard/manager-dashboard.html", context)
+
+
+def user_dashboard(request):
+    return render(request, "dashboard/user-dashboard.html")
+
+
+def test(request):
+    names = ["Mahmud", "Ahamed", "John", "Mr. X"]
+    count = 0
+    for name in names:
+        count += 1
+    context = {
+        "names": names,
+        "age": 23,
+        "count": count
+    }
+    return render(request, 'test.html', context)
+
 
 def create_task(request):
     # employees = Employee.objects.all()
-    form = TaskModelForm() #FOR GET
+    task_form = TaskModelForm()  # For GET
+    task_detail_form = TaskDetailModelForm()
 
     if request.method == "POST":
-        form = TaskModelForm(request.POST)
-   
-        if form.is_valid():
-         
-            form.save()
-            return  render(request,'task_form.html',{"form":form , "message" :"Task added successfully"})
+        task_form = TaskModelForm(request.POST)
+        task_detail_form = TaskDetailModelForm(request.POST)
 
-    context = {"form" : form}
-    return render(request,"task_form.html",context)
+        if task_form.is_valid() and task_detail_form.is_valid():
+
+            """ For Model Form Data """
+            task = task_form.save()
+            task_detail = task_detail_form.save(commit=False)
+            task_detail.task = task
+            task_detail.save()
+
+            messages.success(request, "Task Created Successfully")
+            return redirect('create-task')
+
+    context = {"task_form": task_form, "task_detail_form": task_detail_form}
+    return render(request, "task_form.html", context)
+
+
+def update_task(request, id):
+    task = Task.objects.get(id=id)
+    task_form = TaskModelForm(instance=task)  # For GET
+
+    if task.details:
+        task_detail_form = TaskDetailModelForm(instance=task.details)
+
+    if request.method == "POST":
+        task_form = TaskModelForm(request.POST, instance=task)
+        task_detail_form = TaskDetailModelForm(
+            request.POST, instance=task.details)
+
+        if task_form.is_valid() and task_detail_form.is_valid():
+
+            """ For Model Form Data """
+            task = task_form.save()
+            task_detail = task_detail_form.save(commit=False)
+            task_detail.task = task
+            task_detail.save()
+
+            messages.success(request, "Task Updated Successfully")
+            return redirect('update-task', id)
+
+    context = {"task_form": task_form, "task_detail_form": task_detail_form}
+    return render(request, "task_form.html", context)
+
+
+def delete_task(request, id):
+    if request.method == 'POST':
+        task = Task.objects.get(id=id)
+        task.delete()
+        messages.success(request, 'Task Deleted Successfully')
+        return redirect('manager-dashboard')
+    else:
+        messages.error(request, 'Something went wrong')
+        return redirect('manager-dashboard')
+
 
 def view_task(request):
-    #Show the task that are completed
-    # tasks = Task.objects.filter(status = "COMPLETED")
-
-    #Show the task whose due date is today
-    # tasks = Task.objects.filter(due_date = date.today())
-
-    """"Show the task whose priority is not low """
-
-    # tasks = TaskDetail.objects.exclude(priority = "H")
-
-    '''Show the task that contain letter 'c' and status pending'''
-    #tasks = Task.objects.filter(title__icontains  = 'c' , status = 'PENDING')
-    
-    '''Show the tasks those are in-progress or status pending'''
-    tasks = Task.objects.filter(Q(status = 'PENDING')| Q(status = 'IN_PROGRESS'))
-  
-    '''to check if any entry exists or not'''
-    # tasks = Task.objects.filter(status='kjjsdasdwqwdqwd').exists() 
-
-    return render(request,"show_task.html",{"tasks" : tasks })
+    projects = Project.objects.annotate(
+        num_task=Count('task')).order_by('num_task')
+    return render(request, "show_task.html", {"projects": projects})

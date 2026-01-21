@@ -1,0 +1,24 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    {% comment %} <link rel="stylesheet" href="css/output.css"> {% endcomment %}
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class='mt-5 w-1/2 mx-auto bg-orange-200'>
+    <h1 class = 'text-center text-3xl font-bold bg-rose-950 px-2 py-2 text-white'>Welcome to Authentication System</h1>
+    <div>
+        <form method='POST' class = "flex flex-col gap-5 mx-auto mt-5 mb-5">
+            {% csrf_token %}
+            <h2 class = ' text-2xl font-semibold'>Enter User Name</h2>
+            <input type="text" class= 'border bg-gray-200 px-3 py-3 rounded-lg ' placeholder="Enter your username" name="username">
+            <h2 class = ' text-2xl font-semibold'>Enter Password</h2>
+            <input type="password" class= 'border bg-gray-200 px-3 py-3 rounded-lg ' placeholder="Enter your password"name='password'>
+            <button type="submit" class= 'border bg-red-500 px-2 py-2 rounded-lg  '>Sign In</button>
+        </form>
+    </div>
+</body>
+</html>
