@@ -1,9 +1,13 @@
 from django import forms
 import re
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import User,Group,Permission
+from django.contrib.auth.models import  Permission, Group
 from tasks.forms import StyledFormMixin
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm ,SetPasswordForm,PasswordChangeForm,PasswordResetForm
+from users.models import CustomUser
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class RegisterForm(UserCreationForm):
     class Meta:
@@ -74,26 +78,76 @@ class CustomRegistrationForm(StyledFormMixin, forms.ModelForm):
         return cleaned_data
 
 
-class LoginForm(StyledFormMixin,AuthenticationForm):
+class LoginForm(StyledFormMixin, AuthenticationForm):
+    def __init__(self, *arg, **kwargs):
+        super().__init__(*arg, **kwargs)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-class AssignRoleForm(StyledFormMixin,forms.Form):
+
+class AssignRoleForm(StyledFormMixin, forms.Form):
     role = forms.ModelChoiceField(
         queryset=Group.objects.all(),
-        empty_label= "Select a Role"
+        empty_label="Select a Role"
     )
-
-class CreateGroupForm(StyledFormMixin,forms.ModelForm):
+    
+class CreateGroupForm(StyledFormMixin, forms.ModelForm):
     permissions = forms.ModelMultipleChoiceField(
         queryset=Permission.objects.all(),
-        widget = forms.CheckboxSelectMultiple,
-        required = False ,
-        label = 'Assign Permission'
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label='Assign Permission'
     )
+    
+    class Meta:
+        model = Group
+        fields = ['name', 'permissions']
+
+class CustomPasswordChangeForm(StyledFormMixin,PasswordChangeForm):
+    pass        
+class CustomPasswordResetForm(StyledFormMixin,PasswordResetForm):
+    pass    
+class CustomPasswordResetConfirmForm(StyledFormMixin,SetPasswordForm):
+    pass 
+
+
+
+'''
+class EditProfileForm(StyledFormMixin,forms.ModelForm):
     class Meta : 
-        model = Group 
-        fields = ['name','permissions']
+        model = User
+        fields = ['email','first_name','last_name']
+
+    bio = forms.CharField(required=False,widget=forms.Textarea,label='Bio')
+    profile_image = forms.ImageField(required=False,label='Profile Image') 
+
+    
+    def __init__(self, *args, **kwargs):
+        self.userprofile = kwargs.pop('userprofile',None)
+        super().__init__(*args, **kwargs)
 
 
+        if self.userprofile : 
+            self.fields['bio'].initial = self.userprofile.bio
+            self.fields['profile_image'].initial = self.userprofile.profile_image
+
+    def save(self, commit = True):
+        user = super().save(commit = False)
+
+        #Save userprofile jodi thake
+        if self.userprofile :
+            self.userprofile.bio = self.cleaned_data.get('bio')
+            self.userprofile.profile_image = self.cleaned_data.get('profile_image') 
+
+            if commit:
+                self.userprofile.save()
+
+        if commit :
+            user.save()
+
+        return user             
+
+'''   
+
+class EditProfileForm(StyledFormMixin,forms.ModelForm):
+    class Meta : 
+        model = CustomUser
+        fields = ['email','first_name','last_name','bio','profile_image']
