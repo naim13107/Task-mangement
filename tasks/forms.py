@@ -27,7 +27,7 @@ class StyledFormMixin:
         super().__init__(*arg, **kwarg)
         self.apply_styled_widgets()
 
-    default_classes = "border-2 border-gray-300 w-full p-3 rounded-lg shadow-sm focus:outline-none focus:border-rose-500 focus:ring-rose-500"
+    default_classes = "w-full border-2 border-gray-300 p-3 rounded-lg shadow-sm focus:outline-none focus:border-rose-500 focus:ring-rose-500"
 
     def apply_styled_widgets(self):
         for field_name, field in self.fields.items():
@@ -65,10 +65,10 @@ class StyledFormMixin:
 class TaskModelForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = Task
-        fields = ['title', 'description', 'due_date', 'assigned_to']
+        fields = ['title', 'description', 'due_date', ] # add 'assigned_to'
         widgets = {
             'due_date': forms.SelectDateWidget,
-            'assigned_to': forms.CheckboxSelectMultiple
+            # 'assigned_to': forms.CheckboxSelectMultiple
         }
 
 
