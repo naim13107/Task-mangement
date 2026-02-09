@@ -1,36 +1,42 @@
 import os
 import django
-from faker import Faker
 import random
-from tasks.models import Employee, Project, Task, TaskDetail
+from faker import Faker
 
-# Set up Django environment
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'task_management.settings')
+# 1️⃣ Set up Django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'task_management.settings')  # adjust if needed
 django.setup()
 
-# Function to populate the database
+# 2️⃣ Import models AFTER Django setup
 
+from tasks.models import Project, Task, TaskDetail
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
+
+# 3️⃣ Populate function
 def populate_db():
-    # Initialize Faker
     fake = Faker()
 
-    # Create Projects
-    projects = [Project.objects.create(
-        name=fake.bs().capitalize(),
-        description=fake.paragraph(),
-        start_date=fake.date_this_year()
-    ) for _ in range(5)]
+    # 3a. Use existing users
+    users = list(User.objects.all())
+    if not users:
+        print("No users found in the database! Add some users first.")
+        return
+    print(f"Found {len(users)} existing users.")
+
+    # 3b. Create projects
+    projects = [
+        Project.objects.create(
+            name=fake.bs().capitalize(),
+            description=fake.paragraph(),
+            start_date=fake.date_this_year()
+        )
+        for _ in range(5)
+    ]
     print(f"Created {len(projects)} projects.")
 
-    # Create Employees
-    employees = [Employee.objects.create(
-        name=fake.name(),
-        email=fake.email()
-    ) for _ in range(10)]
-    print(f"Created {len(employees)} employees.")
-
-    # Create Tasks
+    # 3c. Create tasks
     tasks = []
     for _ in range(20):
         task = Task.objects.create(
@@ -39,20 +45,22 @@ def populate_db():
             description=fake.paragraph(),
             due_date=fake.date_this_year(),
             status=random.choice(['PENDING', 'IN_PROGRESS', 'COMPLETED']),
-            is_completed=random.choice([True, False])
         )
-        task.assigned_to.set(random.sample(employees, random.randint(1, 3)))
+        # Assign 1-3 random existing users
+        task.assigned_to.set(random.sample(users, random.randint(1, min(3, len(users)))))
         tasks.append(task)
     print(f"Created {len(tasks)} tasks.")
 
-    # Create Task Details
+    # 3d. Create task details
     for task in tasks:
         TaskDetail.objects.create(
             task=task,
-            assigned_to=", ".join(
-                [emp.name for emp in task.assigned_to.all()]),
             priority=random.choice(['H', 'M', 'L']),
             notes=fake.paragraph()
         )
-    print("Populated TaskDetails for all tasks.")
+    print("Created TaskDetails for all tasks.")
     print("Database populated successfully!")
+
+# 4️⃣ Run
+if __name__ == "__main__":
+    populate_db()

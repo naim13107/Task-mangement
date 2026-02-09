@@ -8,20 +8,21 @@
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
 </head>
 <body>
-    <div class = "w-1/2 mx-auto mt-8" >
+    <div class="w-1/2 mx-auto mt-8">
         <div>
-        
-        {% if message %}
-            <p>{{message}}</p>
-        {% endif %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="px-2 py-1 {% if message.tags == 'success' %}bg-green-500{% endif %} ">{{message}}</div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <form method="POST" enctype='multipart/form-data'>
             
-    </div>
-    <form method = "POST">
-        {% comment %} <input type="text" class = "border-2 border-gray-100 shadow-sm w-full rounded-md " placeholder = "Enter Task Title"> {% endcomment %}
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type = "submit" class = "bg-red-600 px-3 py-2 text-white mt-5 rounded-md">Submit</button>
-    </form>
+            {% csrf_token %}
+            {{ task_form }}
+            {{ task_detail_form }}
+            <button type="submit" class="mb-5 bg-rose-600 px-3 py-2 text-white mt-2 rounded-md">Submit</button>
+        </form>
     </div>
 </body>
 </html>
