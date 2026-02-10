@@ -1,6 +1,5 @@
 from django.shortcuts import render, redirect, HttpResponse
 from django.contrib.auth.models import Group
-from django.contrib.auth import login, logout 
 from users.forms import CustomRegistrationForm,CustomPasswordResetConfirmForm,CustomPasswordResetForm,AssignRoleForm, CreateGroupForm ,CustomPasswordChangeForm,EditProfileForm
 from django.contrib import messages
 from django.contrib import messages
@@ -10,9 +9,11 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Prefetch
 from django.contrib.auth.views import LoginView,PasswordResetConfirmView,PasswordChangeView,PasswordResetView
 from django.views.generic import TemplateView
-from django.views.generic import UpdateView
+from django.views.generic import UpdateView,CreateView
 from django.urls import reverse_lazy
 from django.contrib.auth import get_user_model
+from django.views.generic.edit import FormView
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 
 User = get_user_model()
 
@@ -53,33 +54,54 @@ def is_admin(user):
     )
 
 
-def sign_up(request):
-    form = CustomRegistrationForm()
-    if request.method == 'POST':
-        form = CustomRegistrationForm(request.POST)
-        if form.is_valid():
-            user = form.save(commit=False)
-            user.set_password(form.cleaned_data.get('password1'))
-            user.is_active = False
-            user.save()
-            messages.success(
-                request, 'A Confirmation mail sent. Please check your email')
-            return redirect('sign-in')
+# def sign_up(request):
+#     form = CustomRegistrationForm()
+#     if request.method == 'POST':
+#         form = CustomRegistrationForm(request.POST)
+#         if form.is_valid():
+#             user = form.save(commit=False)
+#             user.set_password(form.cleaned_data.get('password1'))
+#             user.is_active = False
+#             user.save()
+#             messages.success(
+#                 request, 'A Confirmation mail sent. Please check your email')
+#             return redirect('sign-in')
 
-        else:
-            print("Form is not valid")
-    return render(request, 'registration/register.html', {"form": form})
+#         else:
+#             print("Form is not valid")
+#     return render(request, 'registration/register.html', {"form": form})
 
+class SignUpView(FormView):
+    template_name = 'registration/register.html'
+    form_class = CustomRegistrationForm
+    success_url = reverse_lazy('sign-in')
 
-def sign_in(request):
-    form = LoginForm()
-    if request.method == 'POST':
-        form = LoginForm(data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
-            login(request, user)
-            return redirect('home')
-    return render(request, 'registration/login.html', {'form': form})
+    def form_valid(self, form):
+        user = form.save(commit=False)
+        user.set_password(form.cleaned_data.get('password1'))
+        user.is_active = False
+        user.save()
+
+        messages.success(
+            self.request, 
+            'A Confirmation mail sent. Please check your email'
+        )
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        print("Form is not valid")
+        return super().form_invalid(form)
+    
+
+# def sign_in(request):
+#     form = LoginForm()
+#     if request.method == 'POST':
+#         form = LoginForm(data=request.POST)
+#         if form.is_valid():
+#             user = form.get_user()
+#             login(request, user)
+#             return redirect('home')
+#     return render(request, 'registration/login.html', {'form': form})
 
 class CustomLoginView(LoginView):
     form_class = LoginForm
@@ -92,11 +114,11 @@ class ChangePassword(PasswordChangeView):
     template_name = 'accounts/password_change.html' 
     form_class = CustomPasswordChangeForm   
 
-@login_required
-def sign_out(request):
-    if request.method == 'POST':
-        logout(request)
-        return redirect('sign-in')
+# @login_required
+# def sign_out(request):
+#     if request.method == 'POST':
+#         logout(request)
+#         return redirect('sign-in')
 
 
 def activate_user(request, user_id, token):
@@ -112,21 +134,50 @@ def activate_user(request, user_id, token):
     except User.DoesNotExist:
         return HttpResponse('User not found')
 
-@login_required
-@user_passes_test(is_admin, login_url='no-permission')
-def admin_dashboard(request):
-    users = User.objects.prefetch_related(
-        Prefetch('groups', queryset=Group.objects.all(), to_attr='all_groups')
-    ).all()
+# @login_required
+# @user_passes_test(is_admin, login_url='no-permission')
+# def admin_dashboard(request):
+#     users = User.objects.prefetch_related(
+#         Prefetch('groups', queryset=Group.objects.all(), to_attr='all_groups')
+#     ).all()
 
-    print(users)
+#     print(users)
 
-    for user in users:
-        if user.all_groups:
-            user.group_name = user.all_groups[0].name
-        else:
-            user.group_name = 'No Group Assigned'
-    return render(request, 'admin/dashboard.html', {"users": users})
+#     for user in users:
+#         if user.all_groups:
+#             user.group_name = user.all_groups[0].name
+#         else:
+#             user.group_name = 'No Group Assigned'
+#     return render(request, 'admin/dashboard.html', {"users": users})
+
+class AdminDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'admin/dashboard.html'
+    
+    def test_func(self):
+        return is_admin(self.request.user)
+
+    def handle_no_permission(self):
+        return redirect('no-permission')
+
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        
+        users = User.objects.prefetch_related(
+            Prefetch('groups', queryset=Group.objects.all(), to_attr='all_groups')
+        ).all()
+
+       
+        for user in users:
+            if user.all_groups:
+                user.group_name = user.all_groups[0].name
+            else:
+                user.group_name = 'No Group Assigned'
+
+        
+        context['users'] = users
+        return context
 
 @login_required
 @user_passes_test(is_admin, login_url='no-permission')
@@ -145,28 +196,52 @@ def assign_role(request, user_id):
 
     return render(request, 'admin/assign_role.html', {"form": form})
 
-@login_required
-@user_passes_test(is_admin, login_url='no-permission')
-def create_group(request):
-    form = CreateGroupForm()
-    if request.method == 'POST':
-        form = CreateGroupForm(request.POST)
 
-        if form.is_valid():
-            group = form.save()
-            messages.success(request, f"Group {group.name} has been created successfully")
-            return redirect('create-group')
 
-    return render(request, 'admin/create_group.html', {'form': form})
+
+
+# @login_required
+# @user_passes_test(is_admin, login_url='no-permission')
+# def create_group(request):
+#     form = CreateGroupForm()
+#     if request.method == 'POST':
+#         form = CreateGroupForm(request.POST)
+
+#         if form.is_valid():
+#             group = form.save()
+#             messages.success(request, f"Group {group.name} has been created successfully")
+#             return redirect('create-group')
+
+#     return render(request, 'admin/create_group.html', {'form': form})
+
+
+class CreateGroupView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+    form_class = CreateGroupForm
+    template_name = 'admin/create_group.html'
+    success_url = reverse_lazy('create-group')
+
+    def test_func(self):
+        """Replaces @user_passes_test(is_admin)"""
+        return is_admin(self.request.user)
+
+    def handle_no_permission(self):
+        """Replaces login_url='no-permission'"""
+        return redirect('no-permission')
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        
+        messages.success(
+            self.request, 
+            f"Group {self.object.name} has been created successfully"
+        )
+        return response
 
 @login_required
 @user_passes_test(is_admin, login_url='no-permission')
 def group_list(request):
     groups = Group.objects.prefetch_related('permissions').all()
     return render(request, 'admin/group_list.html', {'groups': groups})
-
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import TemplateView
 
 
 class ProfileView(LoginRequiredMixin, TemplateView):
@@ -229,9 +304,6 @@ class EditProfileView(UpdateView):
 
 
 
-
-
-# class UpdateProfileView()
     
 """ 
 
