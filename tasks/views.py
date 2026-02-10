@@ -132,9 +132,14 @@ class ManagerDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView
         })
         return context
 
-@user_passes_test(is_employee)
-def employee_dashboard(request):
-    return render(request, "dashboard/user-dashboard.html")
+# @user_passes_test(is_employee)
+# def employee_dashboard(request):
+#     return render(request, "dashboard/user-dashboard.html")
+
+@method_decorator(user_passes_test(is_employee),name='dispatch')
+class EmployeeDashboardView(TemplateView):
+    template_name = "dashboard/user-dashboard.html"
+
 
 
 # @login_required
@@ -331,20 +336,20 @@ class ViewProject(ListView):
         return queryset
 
 
-@login_required
-@permission_required("tasks.view_task", login_url='no-permission')
-def task_details(request, task_id):
-    task = Task.objects.get(id=task_id)
-    status_choices = Task.STATUS_CHOICES
+# @login_required
+# @permission_required("tasks.view_task", login_url='no-permission')
+# def task_details(request, task_id):
+#     task = Task.objects.get(id=task_id)
+#     status_choices = Task.STATUS_CHOICES
 
-    if request.method == 'POST':
-        selected_status = request.POST.get('task_status')
-        print(selected_status)
-        task.status = selected_status
-        task.save()
-        return redirect('task-details', task.id)
+#     if request.method == 'POST':
+#         selected_status = request.POST.get('task_status')
+#         print(selected_status)
+#         task.status = selected_status
+#         task.save()
+#         return redirect('task-details', task.id)
 
-    return render(request, 'task_details.html', {"task": task, 'status_choices': status_choices})
+#     return render(request, 'task_details.html', {"task": task, 'status_choices': status_choices})
 
 
 class TaskDetail(DetailView):
